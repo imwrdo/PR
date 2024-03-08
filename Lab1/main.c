@@ -24,30 +24,52 @@ int main(int argc, char **argv) {
 	p3 = (process *) malloc(sizeof(process));
 	strcpy(p3->name, "Important Calculations");
 
-	qinsert(&queue, p1, 5);
-	qinsert(&queue, p2, 2);
-	qinsert(&queue, p3, 10);
-	qlist(queue, print_process);
-	
-	printf("\n");
-	qremove(&queue, 2);
-	qlist(queue, print_process);
-	
-	printf("\n");
-	qinsert(&queue, p2, 11);
-	qlist(queue, print_process);
-	
-	printf("\n");
-	qremove(&queue, 5);
-	qlist(queue, print_process);
-	
-	printf("\n");
-	qremove(&queue, 11);
-	qlist(queue, print_process);
-	
-	free(p1);
-	free(p2);
-	free(p3);	
-		
-	return 0;
+	int choice;
+    do {
+        printf("\n===== MENU =====\n");
+        printf("1. Insert a data\n");
+        printf("2. Remove a data\n");
+        printf("3. List all datas\n");
+        printf("4. Exit\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1:
+                printf("Enter data: ");
+                char name[40];
+                scanf("%s", name);
+                process *new_process = (process *)malloc(sizeof(process));
+                strcpy(new_process->name, name);
+                int priority;
+                printf("Enter priority: ");
+                scanf("%d", &priority);
+                qinsert(&queue, new_process, priority);
+                break;
+            case 2:
+                printf("Enter index of the process to remove: ");
+                int remove_priority;
+                scanf("%d", &remove_priority);
+                qremove(&queue, remove_priority);
+                break;
+            case 3:
+                printf("\n===== LIST OF DATA =====\n");
+                qlist(queue, print_process);
+                break;
+            case 4:
+                printf("Exiting...\n");
+                break;
+            default:
+                printf("\nInvalid choice! Please enter a number between 1 and 4.\n");
+        }
+    } while (choice != 4);
+
+    while (queue != NULL) {
+        pqueue *temp = queue;
+        queue = queue->next;
+        free(temp->data);
+        free(temp);
+    }
+
+    return 0;
 }
