@@ -16,13 +16,6 @@ void print_process(void *data) {
 int main(int argc, char **argv) {
 	
 	pqueue *queue = NULL;
-	process *p1, *p2, *p3;
-	p1 = (process *) malloc(sizeof(process));
-	strcpy(p1->name, "Firefox");
-	p2 = (process *) malloc(sizeof(process));
-	strcpy(p2->name, "Geany IDE");
-	p3 = (process *) malloc(sizeof(process));
-	strcpy(p3->name, "Important Calculations");
 
 	int choice;
     do {
@@ -40,11 +33,16 @@ int main(int argc, char **argv) {
                 char name[40];
                 scanf("%s", name);
                 process *new_process = (process *)malloc(sizeof(process));
+                if (new_process == NULL) {
+                    fprintf(stderr, "Memory allocation failed.\n");
+                    exit(EXIT_FAILURE);
+                }
                 strcpy(new_process->name, name);
                 int priority;
                 printf("Enter priority: ");
                 scanf("%d", &priority);
                 qinsert(&queue, new_process, priority);
+                free(new_process);
                 break;
             case 2:
                 printf("Enter index of the process to remove: ");

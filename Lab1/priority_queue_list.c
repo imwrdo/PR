@@ -23,6 +23,11 @@ void qinsert(pqueue **phead, void *data, int k) {
     }
 
     new_node->data = strdup(data);
+    if (new_node->data == NULL) {
+        fprintf(stderr, "Memory allocation failed.\n");
+        free(new_node);
+        exit(EXIT_FAILURE);
+    }
     new_node->k = k;
 
     if (*phead == NULL) {
