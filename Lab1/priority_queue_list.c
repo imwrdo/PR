@@ -15,16 +15,15 @@ void qlist(pqueue *head, void (*print_data)(void *)) {
 }
 
 void qinsert(pqueue **phead, void *data, int k) {
-	pqueue *new_node = malloc(sizeof(pqueue));
+    pqueue *new_node = malloc(sizeof(pqueue));
 
-	if (new_node == NULL) {
+    if (new_node == NULL) {
         fprintf(stderr, "Memory allocation failed.\n");
         exit(EXIT_FAILURE);
     }
 
-	new_node->data = strdup(data); 
+    new_node->data = strdup(data);
     new_node->k = k;
-
 
     if (*phead == NULL) {
         *phead = new_node;
@@ -32,10 +31,10 @@ void qinsert(pqueue **phead, void *data, int k) {
         new_node->prev = NULL;
     } else {
         pqueue *current = *phead;
-        while (current->next != NULL && strcmp(data, current->data) > 0) {
+        while (current->next != NULL && strcmp(data, current->data) < 0) {
             current = current->next;
         }
-        if (strcmp(data, current->data) <= 0) {
+        if (strcmp(data, current->data) >= 0) {
             if (current->prev == NULL) {
                 *phead = new_node;
             } else {
@@ -51,6 +50,7 @@ void qinsert(pqueue **phead, void *data, int k) {
         }
     }
 }
+
 
 
 void qremove(pqueue **phead, int k) {
