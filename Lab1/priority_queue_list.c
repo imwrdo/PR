@@ -58,7 +58,7 @@ void qinsert(pqueue **phead, void *data, int k) {
 
 
 
-void qremove(pqueue **phead, int k) {
+void qremove(pqueue **phead, int index) {
 	if (*phead == NULL) {
         return;
     }
@@ -66,7 +66,7 @@ void qremove(pqueue **phead, int k) {
     pqueue *current = *phead;
     int i = 0;
 
-    while (current != NULL && i < k) {
+    while (current != NULL && i < index) {
         current = current->next;
         i++;
     }
@@ -88,10 +88,6 @@ void qremove(pqueue **phead, int k) {
 
     free(current->data); 
     free(current);
-}
-
-void print_string(char *str) {
-    printf("%s", str);
 }
 
 

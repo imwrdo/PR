@@ -5,7 +5,7 @@
 
 typedef struct process process;
 struct process {
-	char name[40];
+	char name[200];
 };
 
 void print_process(void *data) {
@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
         switch (choice) {
             case 1:
                 printf("Enter data: ");
-                char name[40];
+                char name[200];
                 scanf("%s", name);
                 process *new_process = (process *)malloc(sizeof(process));
                 if (new_process == NULL) {
@@ -38,17 +38,17 @@ int main(int argc, char **argv) {
                     exit(EXIT_FAILURE);
                 }
                 strcpy(new_process->name, name);
-                int priority;
-                printf("Enter priority: ");
-                scanf("%d", &priority);
-                qinsert(&queue, new_process, priority);
+                int key;
+                printf("Enter key: ");
+                scanf("%d", &key);
+                qinsert(&queue, new_process, key);
                 free(new_process);
                 break;
             case 2:
                 printf("Enter index of the process to remove: ");
-                int remove_priority;
-                scanf("%d", &remove_priority);
-                qremove(&queue, remove_priority);
+                int remove_index;
+                scanf("%d", &remove_index);
+                qremove(&queue, remove_index);
                 break;
             case 3:
                 printf("\n===== LIST OF DATA =====\n");
