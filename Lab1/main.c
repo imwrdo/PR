@@ -38,10 +38,7 @@ int main(int argc, char **argv) {
                     exit(EXIT_FAILURE);
                 }
                 strcpy(new_process->name, name);
-                int key;
-                printf("Enter key: ");
-                scanf("%d", &key);
-                qinsert(&queue, new_process, key);
+                qinsert(&queue, new_process);
                 free(new_process);
                 break;
             case 2:

@@ -7,14 +7,13 @@ void qlist(pqueue *head, void (*print_data)(void *)) {
 	pqueue *p;
 	
 	for (p = head; p != NULL; p = p->next) {
-		printf("%d: ", p->k);
 		print_data(p->data);
 		printf("\n");
 	}
 	
 }
 
-void qinsert(pqueue **phead, void *data, int k) {
+void qinsert(pqueue **phead, void *data) {
     pqueue *new_node = malloc(sizeof(pqueue));
 
     if (new_node == NULL) {
@@ -28,7 +27,6 @@ void qinsert(pqueue **phead, void *data, int k) {
         free(new_node);
         exit(EXIT_FAILURE);
     }
-    new_node->k = k;
 
     if (*phead == NULL) {
         *phead = new_node;
