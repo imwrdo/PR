@@ -1,12 +1,12 @@
 typedef struct pqueue pqueue;
 struct pqueue {
-	void *data;
+	char *data;
 	pqueue *next;
 	pqueue *prev;
 };
 
-void qinsert(pqueue **phead, void *data);
+void qinsert(pqueue **phead, char *data);
 
-void qlist(pqueue *head, void (*print_data)(void *));
+void qlist(pqueue *head);
 
 void qremove(pqueue **phead, int index);

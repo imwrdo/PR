@@ -3,17 +3,16 @@
 #include <string.h>
 #include "priority_queue_list.h"
 
-void qlist(pqueue *head, void (*print_data)(void *)) {
+void qlist(pqueue *head) {
 	pqueue *p;
 	
 	for (p = head; p != NULL; p = p->next) {
-		print_data(p->data);
-		printf("\n");
+		printf("%s\n", p->data);
 	}
 	
 }
 
-void qinsert(pqueue **phead, void *data) {
+void qinsert(pqueue **phead, char *data) {
     pqueue *new_node = malloc(sizeof(pqueue));
 
     if (new_node == NULL) {
@@ -21,12 +20,13 @@ void qinsert(pqueue **phead, void *data) {
         exit(EXIT_FAILURE);
     }
 
-    new_node->data = strdup(data);
+    new_node->data = malloc(strlen(data) + 1); // +1 for null terminator
     if (new_node->data == NULL) {
         fprintf(stderr, "Memory allocation failed.\n");
         free(new_node);
         exit(EXIT_FAILURE);
     }
+    strcpy(new_node->data, data);
 
     if (*phead == NULL) {
         *phead = new_node;
@@ -87,5 +87,4 @@ void qremove(pqueue **phead, int index) {
     free(current->data); 
     free(current);
 }
-
 

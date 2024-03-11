@@ -3,15 +3,6 @@
 #include <string.h>
 #include "priority_queue_list.h"
 
-typedef struct process process;
-struct process {
-	char name[200];
-};
-
-void print_process(void *data) {
-	process *pr = (process *)data;
-	printf("%s", pr->name);
-}
 
 int main(int argc, char **argv) {
 	
@@ -30,14 +21,12 @@ int main(int argc, char **argv) {
         switch (choice) {
             case 1:
                 printf("Enter data: ");
-                char name[200];
-                scanf("%s", name);
-                process *new_process = (process *)malloc(sizeof(process));
+                char *new_process = malloc(sizeof(char) * 100);
                 if (new_process == NULL) {
                     fprintf(stderr, "Memory allocation failed.\n");
                     exit(EXIT_FAILURE);
                 }
-                strcpy(new_process->name, name);
+                scanf("%s", new_process);
                 qinsert(&queue, new_process);
                 free(new_process);
                 break;
@@ -49,7 +38,7 @@ int main(int argc, char **argv) {
                 break;
             case 3:
                 printf("\n===== LIST OF DATA =====\n");
-                qlist(queue, print_process);
+                qlist(queue);
                 break;
             case 4:
                 printf("Exiting...\n");
