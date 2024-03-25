@@ -61,6 +61,6 @@ while true; do
             fi
             ;;
         3)  exit ;;
-        *)  echo "Nieprawidłowy wybór. Wybierz opcję od 1 do 6." ;;
+        *)  echo "Nieprawidłowy wybór. Wybierz opcję od 1 do 3." ;;
     esac
 done
