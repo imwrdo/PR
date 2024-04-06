@@ -1,8 +1,21 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <Windows.h>
-#include <process.h>
+#include <windows.h>
 #include <tlhelp32.h>
+
+#define MAX_THREADS 10
+
+typedef struct {
+    HANDLE handle;
+    DWORD id;
+    int priority;
+    BOOL finished; // Indicates whether the thread has finished
+    BOOL removed;  // Indicates whether the thread has been removed
+    CRITICAL_SECTION cs; // Critical section for synchronization
+} ThreadInfo;
+
+ThreadInfo threads[MAX_THREADS];
+int num_threads = 0;
 
 void display_submenu() {
     printf("\nSubmenu:\n");
@@ -23,124 +36,150 @@ int gcd(int a, int b) {
     return a;
 }
 
-void thread_function(void* arg) {
+DWORD WINAPI thread_function(LPVOID arg) {
     int* params = (int*)arg;
     int num1 = params[0];
     int num2 = params[1];
     Sleep(60000);
-    printf("\nCalculating GCD of %d and %d\n", num1, num2);
-    int result = gcd(num1, num2);
-    printf("\nGCD of %d and %d is %d\n", num1, num2, result);
-    _endthread();
+    int threadIndex = -1; // Variable to store the index of the thread in the array
+    // Find the thread index
+    for (int i = 0; i < num_threads; i++) {
+        if (threads[i].id == GetCurrentThreadId()) {
+            threadIndex = i;
+            break;
+        }
+    }
+    if (threadIndex != -1 && !threads[threadIndex].removed) {
+        printf("\nCalculating GCD of %d and %d\n", num1, num2);
+        int result = gcd(num1, num2);
+        printf("\nGCD of %d and %d is %d\n", num1, num2, result);
+    }
+    free(params); // Free the allocated memory
+    return 0;
 }
 
-void create_new_thread(int priority, int num1, int num2) {
-    int minPriority = THREAD_PRIORITY_IDLE;
-    int maxPriority = THREAD_PRIORITY_TIME_CRITICAL;
 
-    if (priority < minPriority || priority > maxPriority) {
-        printf("Invalid thread priority. Priority must be in the range of %d to %d.\n", minPriority, maxPriority);
-        return;
+int create_new_thread(int priority, int num1, int num2) {
+    if (num_threads >= MAX_THREADS) {
+        printf("Maximum number of threads reached.\n");
+        return 1;
     }
+
+    // Validate the priority range
+    if (priority < THREAD_PRIORITY_IDLE || priority > THREAD_PRIORITY_TIME_CRITICAL) {
+        printf("Invalid thread priority. Priority must be in the range of %d to %d.\n",
+               THREAD_PRIORITY_IDLE, THREAD_PRIORITY_TIME_CRITICAL);
+        return 1;
+    }
+
+    HANDLE threadHandle;
     int* params = malloc(2 * sizeof(int));
     if (params == NULL) {
         printf("Memory allocation failed.\n");
-        return;
+        return 1;
     }
     params[0] = num1;
     params[1] = num2;
 
-    uintptr_t threadHandle = _beginthread(thread_function, 0, params);
-    if (threadHandle == -1) {
-        printf("_beginthread failed.\n");
+    InitializeCriticalSection(&threads[num_threads].cs); // Initialize critical section
+
+    threadHandle = CreateThread(NULL, 0, thread_function, params, 0, &threads[num_threads].id);
+    if (threadHandle == NULL) {
+        printf("Failed to create thread. Error code: %d\n", GetLastError());
         free(params);
-        return;
+        DeleteCriticalSection(&threads[num_threads].cs); // Cleanup critical section
+        return 1;
     }
 
-    HANDLE hThread = (HANDLE)threadHandle;
-
-    if (!SetThreadPriority(hThread, priority)) {
-        printf("SetThreadPriority failed (%d).\n", GetLastError());
+    // Set the thread priority
+    if (!SetThreadPriority(threadHandle, priority)) {
+        printf("Failed to set thread priority. Error code: %d\n", GetLastError());
+        CloseHandle(threadHandle);
         free(params);
-        return;
+        DeleteCriticalSection(&threads[num_threads].cs); // Cleanup critical section
+        return 1;
     }
 
-    CloseHandle(hThread);
+    // Store thread information
+    threads[num_threads].handle = threadHandle;
+    threads[num_threads].priority = priority;
+    threads[num_threads].finished = FALSE; // Initialize finished flag
+    threads[num_threads].removed = FALSE;  // Initialize removed flag
+    num_threads++;
+    printf("New thread created successfully.\n");
+    return 0;
 }
 
-void remove_thread(DWORD threadId) {
-    HANDLE hThread = OpenThread(THREAD_TERMINATE, FALSE, threadId);
-    if (hThread == NULL) {
-        printf("OpenThread failed (%d).\n", GetLastError());
+void remove_thread(int threadIndex) {
+    if (threadIndex < 0 || threadIndex >= num_threads) {
+        printf("Invalid thread index.\n");
         return;
     }
 
-    if (!TerminateThread(hThread, 0)) {
-        printf("TerminateThread failed (%d).\n", GetLastError());
+    // Set the removed flag
+    threads[threadIndex].removed = TRUE;
+
+    // Close the handle and remove from the list
+    CloseHandle(threads[threadIndex].handle);
+    for (int i = threadIndex; i < num_threads - 1; i++) {
+        threads[i] = threads[i + 1];
+    }
+    num_threads--;
+    printf("Thread removed successfully.\n");
+}
+
+void change_thread_priority(int threadIndex, int newPriority) {
+    if (threadIndex < 0 || threadIndex >= num_threads) {
+        printf("Invalid thread index.\n");
         return;
     }
 
-    CloseHandle(hThread);
+    // Validate the priority range
+    if (newPriority < THREAD_PRIORITY_IDLE || newPriority > THREAD_PRIORITY_TIME_CRITICAL) {
+        printf("Invalid thread priority. Priority must be in the range of %d to %d.\n",
+               THREAD_PRIORITY_IDLE, THREAD_PRIORITY_TIME_CRITICAL);
+        return;
+    }
+
+    if (!SetThreadPriority(threads[threadIndex].handle, newPriority)) {
+        printf("Failed to change thread priority. Error code: %d\n", GetLastError());
+        return;
+    }
+
+    threads[threadIndex].priority = newPriority;
+    printf("Thread priority changed successfully.\n");
 }
 
 void display_thread_list(DWORD processId) {
-    HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, processId);
-    if (hSnapshot == INVALID_HANDLE_VALUE) {
-        printf("CreateToolhelp32Snapshot failed (%d).\n", GetLastError());
-        return;
-    }
-
-    THREADENTRY32 te32;
-    te32.dwSize = sizeof(THREADENTRY32);
-
-    if (!Thread32First(hSnapshot, &te32)) {
-        printf("Thread32First failed (%d).\n", GetLastError());
-        CloseHandle(hSnapshot);
-        return;
-    }
-
     printf("Thread List:\n");
-    do {
-        if (te32.th32OwnerProcessID == processId) {
-            HANDLE hThread = OpenThread(THREAD_QUERY_INFORMATION, FALSE, te32.th32ThreadID);
-            if (hThread == NULL) {
-                printf("OpenThread failed (%d).\n", GetLastError());
-                continue;
-            }
-            int priority = GetThreadPriority(hThread);
-            printf("Thread ID: %lu, Priority: %d\n", te32.th32ThreadID, priority);
-            CloseHandle(hThread);
-        }
-    } while (Thread32Next(hSnapshot, &te32));
-
-    CloseHandle(hSnapshot);
+    for (int i = 0; i < num_threads; i++) {
+        printf("Thread ID: %lu, Priority: %d\n", threads[i].id, threads[i].priority);
+    }
 }
-void change_thread_priority(DWORD threadId, int newPriority) {
-    HANDLE hThread = OpenThread(THREAD_SET_INFORMATION, FALSE, threadId);
-    if (hThread == NULL) {
-        printf("OpenThread failed (%d).\n", GetLastError());
-        return;
-    }
 
-    if (!SetThreadPriority(hThread, newPriority)) {
-        printf("SetThreadPriority failed (%d).\n", GetLastError());
-        return;
+void cleanup_finished_threads() {
+    for (int i = 0; i < num_threads; i++) {
+        DWORD exitCode;
+        if (GetExitCodeThread(threads[i].handle, &exitCode) && exitCode != STILL_ACTIVE) {
+            CloseHandle(threads[i].handle);
+            for (int j = i; j < num_threads - 1; j++) {
+                threads[j] = threads[j + 1];
+            }
+            num_threads--;
+            i--; // Adjust loop index as elements are shifted
+        }
     }
-
-    CloseHandle(hThread);
 }
 
 int main() {
     int option, priority, num1, num2;
-    DWORD processId = GetCurrentProcessId();
-    DWORD threadId;
     do {
         display_submenu();
         scanf(" %c", &option);
 
         switch (option) {
             case 'a':
-                printf("Enter thread priority (0-31): ");
+                printf("Enter thread priority: ");
                 scanf("%d", &priority);
                 printf("Enter first number: ");
                 scanf("%d", &num1);
@@ -149,19 +188,22 @@ int main() {
                 create_new_thread(priority, num1, num2);
                 break;
             case 'b':
+                display_thread_list(GetCurrentProcessId());
                 printf("Enter Thread ID to remove: ");
-                scanf("%lu", &threadId); 
-                remove_thread(threadId);
+                scanf("%d", &num1); // Changed %lu to %d
+                remove_thread(num1);
                 break;
             case 'c':
-                printf("Enter Thread ID to change priority: ");
-                scanf("%lu", &threadId);
-                printf("Enter new priority (0-31): ");
+                display_thread_list(GetCurrentProcessId());
+                printf("Enter Thread index to change priority: ");
+                scanf("%d", &num1); // Changed %lu to %d
+                printf("Enter new priority : ");
                 scanf("%d", &priority);
-                change_thread_priority(threadId, priority);
+                change_thread_priority(num1, priority);
                 break;
             case 'd':
-                display_thread_list(processId);
+                cleanup_finished_threads();
+                display_thread_list(GetCurrentProcessId());
                 break;
             case 'e':
                 printf("Exiting process.\n");
