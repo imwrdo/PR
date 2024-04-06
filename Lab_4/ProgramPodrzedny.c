@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <Windows.h>
 #include <process.h>
 #include <tlhelp32.h>
@@ -15,18 +14,39 @@ void display_submenu() {
     printf("Wybierz opcje: ");
 }
 
+int gcd(int a, int b) {
+    while (b != 0) {
+        int temp = b;
+        b = a % b;
+        a = temp;
+    }
+    return a;
+}
+
 void thread_function(void* arg) {
-    int* param = (int*)arg;
-    printf("Thread started with param: %d\n", *param);
-    Sleep(60000); // Symulacja obliczeń trwających około 1 minuty
-    printf("Thread finished.\n");
+    int* params = (int*)arg;
+    int num1 = params[0];
+    int num2 = params[1];
+    Sleep(60000);
+    printf("\nCalculating GCD of %d and %d\n", num1, num2);
+    int result = gcd(num1, num2);
+    printf("\nGCD of %d and %d is %d\n", num1, num2, result);
     _endthread();
 }
 
-void create_new_thread(int priority, int param) {
-    uintptr_t threadHandle = _beginthread(thread_function, 0, &param);
+void create_new_thread(int priority, int num1, int num2) {
+    int* params = malloc(2 * sizeof(int));
+    if (params == NULL) {
+        printf("Memory allocation failed.\n");
+        return;
+    }
+    params[0] = num1;
+    params[1] = num2;
+
+    uintptr_t threadHandle = _beginthread(thread_function, 0, params);
     if (threadHandle == -1) {
         printf("_beginthread failed.\n");
+        free(params);
         return;
     }
 
@@ -34,11 +54,14 @@ void create_new_thread(int priority, int param) {
 
     if (!SetThreadPriority(hThread, priority)) {
         printf("SetThreadPriority failed (%d).\n", GetLastError());
+        free(params);
         return;
     }
 
     CloseHandle(hThread);
 }
+
+
 
 void remove_thread(DWORD threadId) {
     HANDLE hThread = OpenThread(THREAD_TERMINATE, FALSE, threadId);
@@ -73,16 +96,33 @@ void display_thread_list(DWORD processId) {
 
     printf("Thread List:\n");
     do {
-        printf("Thread ID: %lu\n", te32.th32ThreadID);
+        if (te32.th32OwnerProcessID == processId) {
+            printf("Thread ID: %lu\n", te32.th32ThreadID);
+        }
     } while (Thread32Next(hSnapshot, &te32));
 
     CloseHandle(hSnapshot);
 }
 
-int main() {
-    int option, priority, param;
-    DWORD processId = GetCurrentProcessId();
+void change_thread_priority(DWORD threadId, int newPriority) {
+    HANDLE hThread = OpenThread(THREAD_SET_INFORMATION, FALSE, threadId);
+    if (hThread == NULL) {
+        printf("OpenThread failed (%d).\n", GetLastError());
+        return;
+    }
 
+    if (!SetThreadPriority(hThread, newPriority)) {
+        printf("SetThreadPriority failed (%d).\n", GetLastError());
+        return;
+    }
+
+    CloseHandle(hThread);
+}
+
+int main() {
+    int option, priority, num1, num2;
+    DWORD processId = GetCurrentProcessId();
+    DWORD threadId;
     do {
         display_submenu();
         scanf(" %c", &option);
@@ -91,17 +131,23 @@ int main() {
             case 'a':
                 printf("Enter thread priority (0-31): ");
                 scanf("%d", &priority);
-                printf("Enter thread parameter: ");
-                scanf("%d", &param);
-                create_new_thread(priority, param);
+                printf("Enter first number: ");
+                scanf("%d", &num1);
+                printf("Enter second number: ");
+                scanf("%d", &num2);
+                create_new_thread(priority, num1, num2);
                 break;
             case 'b':
                 printf("Enter Thread ID to remove: ");
-                scanf("%lu", &processId); // W rzeczywistych warunkach należałoby pobrać ID wątku
-                remove_thread(processId);
+                scanf("%lu", &threadId); 
+                remove_thread(threadId);
                 break;
             case 'c':
-                printf("Not implemented yet.\n");
+                printf("Enter Thread ID to change priority: ");
+                scanf("%lu", &threadId);
+                printf("Enter new priority (0-31): ");
+                scanf("%d", &priority);
+                change_thread_priority(threadId, priority);
                 break;
             case 'd':
                 display_thread_list(processId);
