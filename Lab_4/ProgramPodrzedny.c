@@ -35,6 +35,13 @@ void thread_function(void* arg) {
 }
 
 void create_new_thread(int priority, int num1, int num2) {
+    int minPriority = THREAD_PRIORITY_IDLE;
+    int maxPriority = THREAD_PRIORITY_TIME_CRITICAL;
+
+    if (priority < minPriority || priority > maxPriority) {
+        printf("Invalid thread priority. Priority must be in the range of %d to %d.\n", minPriority, maxPriority);
+        return;
+    }
     int* params = malloc(2 * sizeof(int));
     if (params == NULL) {
         printf("Memory allocation failed.\n");
@@ -60,8 +67,6 @@ void create_new_thread(int priority, int num1, int num2) {
 
     CloseHandle(hThread);
 }
-
-
 
 void remove_thread(DWORD threadId) {
     HANDLE hThread = OpenThread(THREAD_TERMINATE, FALSE, threadId);
@@ -97,13 +102,19 @@ void display_thread_list(DWORD processId) {
     printf("Thread List:\n");
     do {
         if (te32.th32OwnerProcessID == processId) {
-            printf("Thread ID: %lu\n", te32.th32ThreadID);
+            HANDLE hThread = OpenThread(THREAD_QUERY_INFORMATION, FALSE, te32.th32ThreadID);
+            if (hThread == NULL) {
+                printf("OpenThread failed (%d).\n", GetLastError());
+                continue;
+            }
+            int priority = GetThreadPriority(hThread);
+            printf("Thread ID: %lu, Priority: %d\n", te32.th32ThreadID, priority);
+            CloseHandle(hThread);
         }
     } while (Thread32Next(hSnapshot, &te32));
 
     CloseHandle(hSnapshot);
 }
-
 void change_thread_priority(DWORD threadId, int newPriority) {
     HANDLE hThread = OpenThread(THREAD_SET_INFORMATION, FALSE, threadId);
     if (hThread == NULL) {
