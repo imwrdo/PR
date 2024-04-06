@@ -23,4 +23,10 @@ parallel computing, and distributed processing techniques.
 The script allows the flexibility to add (any number!) of new commands to run.
 main.c: the same as in the script, but this time implemented in C code.
 The script and .c program have menu
-
+4. Process and Thread Management
+  - Folder: Lab4
+  - Status: Completed and Published
+  - Description: In this lab, we learned about managing processes and threads with two console programs: ProgramGlowny.exe and ProgramPodrzedny.exe.
+ProgramGlowny.exe allows users to control processes. It can create new processes with adjustable priorities, stop specific processes, list running processes, and close the program, ending all associated processes.
+ProgramPodrzedny.exe handles thread management within its own process. Users can create threads, adjust priorities, delete threads, and list active threads. Additionally, the program can terminate the entire process, stopping all threads.
+This lab provided practical experience in managing processes and threads within a console environment.
