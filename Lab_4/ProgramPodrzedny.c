@@ -40,9 +40,9 @@ DWORD WINAPI thread_function(LPVOID arg) {
     int* params = (int*)arg;
     int num1 = params[0];
     int num2 = params[1];
-    Sleep(60000);
-    int threadIndex = -1; // Variable to store the index of the thread in the array
-    // Find the thread index
+    int sleep_time = params[2];
+    Sleep(sleep_time);
+    int threadIndex = -1; 
     for (int i = 0; i < num_threads; i++) {
         if (threads[i].id == GetCurrentThreadId()) {
             threadIndex = i;
@@ -54,18 +54,18 @@ DWORD WINAPI thread_function(LPVOID arg) {
         int result = gcd(num1, num2);
         printf("\nGCD of %d and %d is %d\n", num1, num2, result);
     }
-    free(params); // Free the allocated memory
+    free(params); 
     return 0;
 }
 
 
-int create_new_thread(int priority, int num1, int num2) {
+int create_new_thread(int priority, int num1, int num2,int sleep_time) {
     if (num_threads >= MAX_THREADS) {
         printf("Maximum number of threads reached.\n");
         return 1;
     }
 
-    // Validate the priority range
+    
     if (priority < THREAD_PRIORITY_IDLE || priority > THREAD_PRIORITY_TIME_CRITICAL) {
         printf("Invalid thread priority. Priority must be in the range of %d to %d.\n",
                THREAD_PRIORITY_IDLE, THREAD_PRIORITY_TIME_CRITICAL);
@@ -73,38 +73,38 @@ int create_new_thread(int priority, int num1, int num2) {
     }
 
     HANDLE threadHandle;
-    int* params = malloc(2 * sizeof(int));
+    int* params = malloc(3 * sizeof(int));
     if (params == NULL) {
         printf("Memory allocation failed.\n");
         return 1;
     }
     params[0] = num1;
     params[1] = num2;
-
-    InitializeCriticalSection(&threads[num_threads].cs); // Initialize critical section
+    params[2] = sleep_time;
+    InitializeCriticalSection(&threads[num_threads].cs); 
 
     threadHandle = CreateThread(NULL, 0, thread_function, params, 0, &threads[num_threads].id);
     if (threadHandle == NULL) {
-        printf("Failed to create thread. Error code: %d\n", GetLastError());
+        printf("Failed to create thread. Error code: %ld\n", GetLastError());
         free(params);
-        DeleteCriticalSection(&threads[num_threads].cs); // Cleanup critical section
+        DeleteCriticalSection(&threads[num_threads].cs); 
         return 1;
     }
 
     // Set the thread priority
     if (!SetThreadPriority(threadHandle, priority)) {
-        printf("Failed to set thread priority. Error code: %d\n", GetLastError());
+        printf("Failed to set thread priority. Error code: %ld\n", GetLastError());
         CloseHandle(threadHandle);
         free(params);
-        DeleteCriticalSection(&threads[num_threads].cs); // Cleanup critical section
+        DeleteCriticalSection(&threads[num_threads].cs); 
         return 1;
     }
 
     // Store thread information
     threads[num_threads].handle = threadHandle;
     threads[num_threads].priority = priority;
-    threads[num_threads].finished = FALSE; // Initialize finished flag
-    threads[num_threads].removed = FALSE;  // Initialize removed flag
+    threads[num_threads].finished = FALSE; 
+    threads[num_threads].removed = FALSE;  
     num_threads++;
     printf("New thread created successfully.\n");
     return 0;
@@ -116,10 +116,10 @@ void remove_thread(int threadIndex) {
         return;
     }
 
-    // Set the removed flag
+    
     threads[threadIndex].removed = TRUE;
 
-    // Close the handle and remove from the list
+    
     CloseHandle(threads[threadIndex].handle);
     for (int i = threadIndex; i < num_threads - 1; i++) {
         threads[i] = threads[i + 1];
@@ -134,7 +134,7 @@ void change_thread_priority(int threadIndex, int newPriority) {
         return;
     }
 
-    // Validate the priority range
+    
     if (newPriority < THREAD_PRIORITY_IDLE || newPriority > THREAD_PRIORITY_TIME_CRITICAL) {
         printf("Invalid thread priority. Priority must be in the range of %d to %d.\n",
                THREAD_PRIORITY_IDLE, THREAD_PRIORITY_TIME_CRITICAL);
@@ -142,7 +142,7 @@ void change_thread_priority(int threadIndex, int newPriority) {
     }
 
     if (!SetThreadPriority(threads[threadIndex].handle, newPriority)) {
-        printf("Failed to change thread priority. Error code: %d\n", GetLastError());
+        printf("Failed to change thread priority. Error code: %ld\n", GetLastError());
         return;
     }
 
@@ -166,13 +166,15 @@ void cleanup_finished_threads() {
                 threads[j] = threads[j + 1];
             }
             num_threads--;
-            i--; // Adjust loop index as elements are shifted
+            i--; 
         }
     }
 }
 
 int main() {
-    int option, priority, num1, num2;
+    int priority, num1, num2,sleep_time;
+    
+    char option;
     do {
         display_submenu();
         scanf(" %c", &option);
@@ -185,18 +187,21 @@ int main() {
                 scanf("%d", &num1);
                 printf("Enter second number: ");
                 scanf("%d", &num2);
-                create_new_thread(priority, num1, num2);
+                printf("Enter sleep time: ");
+                scanf("%d", &sleep_time);
+
+                create_new_thread(priority, num1, num2,sleep_time);
                 break;
             case 'b':
                 display_thread_list(GetCurrentProcessId());
                 printf("Enter Thread ID to remove: ");
-                scanf("%d", &num1); // Changed %lu to %d
+                scanf("%d", &num1); 
                 remove_thread(num1);
                 break;
             case 'c':
                 display_thread_list(GetCurrentProcessId());
                 printf("Enter Thread index to change priority: ");
-                scanf("%d", &num1); // Changed %lu to %d
+                scanf("%d", &num1); 
                 printf("Enter new priority : ");
                 scanf("%d", &priority);
                 change_thread_priority(num1, priority);
