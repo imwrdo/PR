@@ -30,3 +30,9 @@ The script and .c program have menu
 ProgramGlowny.exe allows users to control processes. It can create new processes with adjustable priorities, stop specific processes, list running processes, and close the program, ending all associated processes.
 ProgramPodrzedny.exe handles thread management within its own process. Users can create threads, adjust priorities, delete threads, and list active threads. Additionally, the program can terminate the entire process, stopping all threads.
 This lab provided practical experience in managing processes and threads within a console environment.
+5.  Inter-process communication in Windows
+  - Folder: Lab5
+  - Status: Completed and Published
+  - Description: The given folder contains two independent window programs:for tracking basic messages (Windows message loop);for communication via the Windows clipboard in its own format.
+
+
