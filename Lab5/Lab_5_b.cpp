@@ -16,8 +16,9 @@ void HandleCut(HWND);
 void HandleCopy(HWND);
 void HandlePaste(HWND);
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+int main()
 {
+    HINSTANCE hInstance = GetModuleHandle(NULL);
     
     WNDCLASSEX wcex;
     wcex.cbSize = sizeof(WNDCLASSEX);
@@ -39,7 +40,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         return 1;
     }
 
-    
     HWND hWnd = CreateWindow(TEXT("WindowClass"), TEXT("Clipboard Communication"), WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT, 400, 200, NULL, NULL, hInstance, NULL);
 
@@ -49,11 +49,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         return 1;
     }
 
-  
-    ShowWindow(hWnd, nCmdShow);
+    ShowWindow(hWnd, SW_SHOWDEFAULT);
     UpdateWindow(hWnd);
 
-    
     MSG msg;
     while (GetMessage(&msg, NULL, 0, 0))
     {
