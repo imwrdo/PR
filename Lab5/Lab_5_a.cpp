@@ -4,7 +4,8 @@
 
 #include <Windows.h>
 #include <stdio.h>
-
+#include <fcntl.h>
+#include <io.h>
 
 #define ID_CHECKBOX_MOVE 101
 #define ID_CHECKBOX_SIZE 102
@@ -17,7 +18,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 void OnCreate(HWND hwnd);
 void HandleClear(HWND hwnd);
 void HandleCheckBox(HWND hwnd, WORD idCheckBox);
-
+void CloseWindowT(HWND hwnd);
 // Funkcja WinMain
 int WINAPI WinMain(
     _In_ HINSTANCE hInstance,       
@@ -44,7 +45,7 @@ int WINAPI WinMain(
         MessageBox(NULL,
             TEXT("Call to RegisterClassEx failed!"),
             TEXT("Win32 Guided Tour"),
-            NULL);
+            MB_ICONERROR);
 
         return 1;
     }
@@ -66,7 +67,7 @@ int WINAPI WinMain(
         MessageBox(NULL,
             TEXT("Call to CreateWindow failed!"),
             TEXT("Win32 Guided Tour"),
-            NULL);
+            MB_ICONERROR);
 
         return 1;
     }
@@ -83,6 +84,15 @@ int WINAPI WinMain(
 
     return (int)msg.wParam;
 }
+
+void CloseWindowT(HWND hwnd) {
+    printf("Application is closing.\n");
+    Sleep(1000);
+    FreeConsole();
+    Sleep(2000);
+    PostQuitMessage(0);
+}
+
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -124,23 +134,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     case WM_PAINT:
         if (IsDlgButtonChecked(hWnd, ID_CHECKBOX_PAINT)) {
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hWnd, &ps);
-            EndPaint(hWnd, &ps);
             printf("Received WM_PAINT message\n");
         }
         break;
     case WM_CLOSE:
         printf("Received WM_CLOSE message. Closing console...\n");
-        Sleep(1000); 
-        FreeConsole();
-        PostQuitMessage(0);
+        CloseWindowT(hWnd);
         break;
     case WM_DESTROY:
         printf("Received WM_DESTROY message. Closing console...\n");
-        Sleep(1000);
-        FreeConsole();
-        PostQuitMessage(0);
+        CloseWindowT(hWnd);
         break;
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
@@ -170,18 +173,19 @@ void OnCreate(HWND hwnd) {
 
 void HandleClear(HWND hwnd) {
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_SCREEN_BUFFER_INFO scBuffInfo;
+    DWORD size;
     COORD coordScreen = { 0, 0 };
-    DWORD cCharsWritten;
-    CONSOLE_SCREEN_BUFFER_INFO csbi;
-    DWORD dwConSize;
 
-    GetConsoleScreenBufferInfo(hConsole, &csbi);
-    dwConSize = csbi.dwSize.X * csbi.dwSize.Y;
-    FillConsoleOutputCharacter(hConsole, (TCHAR)' ', dwConSize, coordScreen, &cCharsWritten);
-    GetConsoleScreenBufferInfo(hConsole, &csbi);
-    FillConsoleOutputAttribute(hConsole, csbi.wAttributes, dwConSize, coordScreen, &cCharsWritten);
+    GetConsoleScreenBufferInfo(hConsole, &scBuffInfo);
+    size = scBuffInfo.dwSize.X * scBuffInfo.dwSize.Y;
+    FillConsoleOutputCharacter(hConsole, (TCHAR)' ', size, coordScreen, &size);
+    FillConsoleOutputAttribute(hConsole, scBuffInfo.wAttributes, size, coordScreen, &size);
     SetConsoleCursorPosition(hConsole, coordScreen);
+
 }
+
+
 
 
 void HandleCheckBox(HWND hwnd, WORD idCheckBox) {
