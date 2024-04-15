@@ -13,19 +13,27 @@
 #define ID_BUTTON_CLEAR 104
 #define ID_BUTTON_CLOSE 105
 
-// Deklaracje funkcji
+bool isCheckedPaint = false;
+bool hasPaintMessageHandled = false;
+
+// Declarations
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 void OnCreate(HWND hwnd);
 void HandleClear(HWND hwnd);
 void HandleCheckBox(HWND hwnd, WORD idCheckBox);
 void CloseWindowT(HWND hwnd);
-// Funkcja WinMain
+
+// WinMain function
 int WINAPI WinMain(
-    _In_ HINSTANCE hInstance,       
-    _In_opt_ HINSTANCE hPrevInstance,  
-    _In_ LPSTR     lpCmdLine,      
-    _In_ int       nCmdShow)      
+    _In_ HINSTANCE hInstance,
+    _In_opt_ HINSTANCE hPrevInstance,
+    _In_ LPSTR lpCmdLine,
+    _In_ int nCmdShow)
 {
+#ifdef _MSC_VER
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
     WNDCLASSEX wcex;
     wcex.cbSize = sizeof(WNDCLASSEX);
     wcex.style = CS_HREDRAW | CS_VREDRAW;
@@ -43,14 +51,14 @@ int WINAPI WinMain(
     if (!RegisterClassEx(&wcex))
     {
         MessageBox(NULL,
-            TEXT("Call to RegisterClassEx failed!"),
-            TEXT("Win32 Guided Tour"),
-            MB_ICONERROR);
+                   TEXT("Call to RegisterClassEx failed!"),
+                   TEXT("Win32 Guided Tour"),
+                   MB_ICONERROR);
 
         return 1;
     }
 
-    HWND hWnd = CreateWindow( 
+    HWND hWnd = CreateWindow(
         TEXT("WindowClass"),
         TEXT("Win32 Guided Tour Application"),
         WS_OVERLAPPEDWINDOW,
@@ -59,15 +67,14 @@ int WINAPI WinMain(
         NULL,
         NULL,
         hInstance,
-        NULL
-    );
+        NULL);
 
     if (!hWnd)
     {
         MessageBox(NULL,
-            TEXT("Call to CreateWindow failed!"),
-            TEXT("Win32 Guided Tour"),
-            MB_ICONERROR);
+                   TEXT("Call to CreateWindow failed!"),
+                   TEXT("Win32 Guided Tour"),
+                   MB_ICONERROR);
 
         return 1;
     }
@@ -85,14 +92,14 @@ int WINAPI WinMain(
     return (int)msg.wParam;
 }
 
-void CloseWindowT(HWND hwnd) {
+void CloseWindowT(HWND hwnd)
+{
     printf("Application is closing.\n");
     Sleep(1000);
     FreeConsole();
     Sleep(2000);
     PostQuitMessage(0);
 }
-
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -111,7 +118,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         case ID_CHECKBOX_MOVE:
         case ID_CHECKBOX_SIZE:
         case ID_CHECKBOX_PAINT:
-            if (HIWORD(wParam) == BN_CLICKED) {
+            if (HIWORD(wParam) == BN_CLICKED)
+            {
                 HandleCheckBox(hWnd, LOWORD(wParam));
             }
             break;
@@ -123,19 +131,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         break;
     case WM_MOVE:
-        if (IsDlgButtonChecked(hWnd, ID_CHECKBOX_MOVE)) {
-            printf("Recieved WM_MOVE message\n");
+        if (IsDlgButtonChecked(hWnd, ID_CHECKBOX_MOVE))
+        {
+            printf("Received WM_MOVE message\n");
         }
         break;
     case WM_SIZE:
-        if (IsDlgButtonChecked(hWnd, ID_CHECKBOX_SIZE)) {
-            printf("Recieved WM_SIZE message\n");
+        if (IsDlgButtonChecked(hWnd, ID_CHECKBOX_SIZE))
+        {
+            printf("Received WM_SIZE message\n");
         }
         break;
     case WM_PAINT:
         if (IsDlgButtonChecked(hWnd, ID_CHECKBOX_PAINT)) {
+            PAINTSTRUCT ps;
+            BeginPaint(hWnd, &ps);
+            EndPaint(hWnd, &ps);
             printf("Received WM_PAINT message\n");
         }
+
         break;
     case WM_CLOSE:
         printf("Received WM_CLOSE message. Closing console...\n");
@@ -151,60 +165,61 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
-
-void OnCreate(HWND hwnd) {
+void OnCreate(HWND hwnd)
+{
     CreateWindow(TEXT("BUTTON"), TEXT("WM_MOVE"), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-        10, 10, 100, 30, hwnd, (HMENU)ID_CHECKBOX_MOVE, NULL, NULL);
+                 10, 10, 100, 30, hwnd, (HMENU)ID_CHECKBOX_MOVE, NULL, NULL);
     CreateWindow(TEXT("BUTTON"), TEXT("WM_SIZE"), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-        110, 10, 100, 30, hwnd, (HMENU)ID_CHECKBOX_SIZE, NULL, NULL);
+                 110, 10, 100, 30, hwnd, (HMENU)ID_CHECKBOX_SIZE, NULL, NULL);
     CreateWindow(TEXT("BUTTON"), TEXT("WM_PAINT"), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-        210, 10, 100, 30, hwnd, (HMENU)ID_CHECKBOX_PAINT, NULL, NULL);
+                 210, 10, 100, 30, hwnd, (HMENU)ID_CHECKBOX_PAINT, NULL, NULL);
     CreateWindow(TEXT("BUTTON"), TEXT("CLEAR"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-        310, 10, 100, 30, hwnd, (HMENU)ID_BUTTON_CLEAR, NULL, NULL);
+                 310, 10, 100, 30, hwnd, (HMENU)ID_BUTTON_CLEAR, NULL, NULL);
     CreateWindow(TEXT("BUTTON"), TEXT("CLOSE"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-        410, 10, 100, 30, hwnd, (HMENU)ID_BUTTON_CLOSE, NULL, NULL);
-    AllocConsole(); 
-    AttachConsole(GetCurrentProcessId()); 
-    freopen("CONOUT$", "w", stdout); 
+                 410, 10, 100, 30, hwnd, (HMENU)ID_BUTTON_CLOSE, NULL, NULL);
+    AllocConsole();
+    AttachConsole(GetCurrentProcessId());
+    freopen("CONOUT$", "w", stdout);
     printf("Console initialized\n");
 }
 
-
-
-void HandleClear(HWND hwnd) {
+void HandleClear(HWND hwnd)
+{
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
     CONSOLE_SCREEN_BUFFER_INFO scBuffInfo;
     DWORD size;
-    COORD coordScreen = { 0, 0 };
+    COORD coordScreen = {0, 0};
 
     GetConsoleScreenBufferInfo(hConsole, &scBuffInfo);
-    size = scBuffInfo.dwSize.X * scBuffInfo.dwSize.Y;
+    size = scBuffInfo.dwSize.X * scBuffInfo.dwSize.Y*200;
     FillConsoleOutputCharacter(hConsole, (TCHAR)' ', size, coordScreen, &size);
     FillConsoleOutputAttribute(hConsole, scBuffInfo.wAttributes, size, coordScreen, &size);
     SetConsoleCursorPosition(hConsole, coordScreen);
-
 }
 
-
-
-
-void HandleCheckBox(HWND hwnd, WORD idCheckBox) {
-
+void HandleCheckBox(HWND hwnd, WORD idCheckBox)
+{
     BOOL checked = IsDlgButtonChecked(hwnd, idCheckBox);
- 
 
-    switch (idCheckBox) {
+    switch (idCheckBox)
+    {
     case ID_CHECKBOX_MOVE:
-        if (checked) printf("\nWM_MOVE checked\n\n");
-        else if (!checked) printf("\nWM_MOVE unchecked\n\n");
+        if (checked)
+            printf("\nWM_MOVE checked\n\n");
+        else if (!checked)
+            printf("\nWM_MOVE unchecked\n\n");
         break;
     case ID_CHECKBOX_SIZE:
-        if (checked) printf("\nWM_SIZE checked\n\n");
-        else if (!checked) printf("\nWM_SIZE unchecked\n\n");
+        if (checked)
+            printf("\nWM_SIZE checked\n\n");
+        else if (!checked)
+            printf("\nWM_SIZE unchecked\n\n");
         break;
     case ID_CHECKBOX_PAINT:
-        if (checked) printf("\nWM_PAINT checked\n\n");
-        else if (!checked) printf("\nWM_PAINT unchecked\n\n");
+        if (checked)
+            printf("\nWM_PAINT checked\n\n");
+        else if (!checked)
+            printf("\nWM_PAINT unchecked\n\n");
         break;
     default:
         break;
