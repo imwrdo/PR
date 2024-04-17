@@ -30,9 +30,6 @@ int WINAPI WinMain(
     _In_ LPSTR lpCmdLine,
     _In_ int nCmdShow)
 {
-#ifdef _MSC_VER
-#define _CRT_SECURE_NO_WARNINGS
-#endif
 
     WNDCLASSEX wcex;
     wcex.cbSize = sizeof(WNDCLASSEX);
