@@ -1,136 +1,156 @@
-#undef UNICODE
-
-#define WIN32_LEAN_AND_MEAN
-
-#include <windows.h>
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <winsock2.h>
+#include <windows.h>
+#include <process.h>
 
-// Need to link with Ws2_32.lib
-#pragma comment (lib, "Ws2_32.lib")
-// #pragma comment (lib, "Mswsock.lib")
+#define SERVER_IP "127.0.0.1"
+#define PORT 12345
+#define MAX_CLIENTS 10
 
-#define DEFAULT_BUFLEN 512
-#define DEFAULT_PORT "27015"
+HANDLE hMutex;
+FILE* sharedFile;
 
-int __cdecl main(void) 
-{
-    WSADATA wsaData;
-    int iResult;
+void handleClient(void* clientSocket) {
+    SOCKET client = *((SOCKET*)clientSocket);
+    free(clientSocket);
+    WaitForSingleObject(hMutex, INFINITE);
+    fprintf(sharedFile, "Client %lld connected.\n", client);
+    fflush(sharedFile);
+    ReleaseMutex(hMutex);
+    char buffer[1024] = {0};
+    recv(client, buffer, sizeof(buffer), 0);
 
-    SOCKET ListenSocket = INVALID_SOCKET;
-    SOCKET ClientSocket = INVALID_SOCKET;
+    int start, end;
+    sscanf(buffer, "%d %d", &start, &end);
 
-    struct addrinfo *result = NULL;
-    struct addrinfo hints;
+    int i, j, isPrime;
+    char result[1024] = {0};
 
-    int iSendResult;
-    char recvbuf[DEFAULT_BUFLEN];
-    int recvbuflen = DEFAULT_BUFLEN;
-    
-    // Initialize Winsock
-    iResult = WSAStartup(MAKEWORD(2,2), &wsaData);
-    if (iResult != 0) {
-        printf("WSAStartup failed with error: %d\n", iResult);
-        return 1;
-    }
+    for (i = start; i <= end; i++) {
+        if (i <= 1)
+            continue;
 
-    ZeroMemory(&hints, sizeof(hints));
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_protocol = IPPROTO_TCP;
-    hints.ai_flags = AI_PASSIVE;
-
-    // Resolve the server address and port
-    iResult = getaddrinfo(NULL, DEFAULT_PORT, &hints, &result);
-    if ( iResult != 0 ) {
-        printf("getaddrinfo failed with error: %d\n", iResult);
-        WSACleanup();
-        return 1;
-    }
-
-    // Create a SOCKET for the server to listen for client connections.
-    ListenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
-    if (ListenSocket == INVALID_SOCKET) {
-        printf("socket failed with error: %ld\n", WSAGetLastError());
-        freeaddrinfo(result);
-        WSACleanup();
-        return 1;
-    }
-
-    // Setup the TCP listening socket
-    iResult = bind( ListenSocket, result->ai_addr, (int)result->ai_addrlen);
-    if (iResult == SOCKET_ERROR) {
-        printf("bind failed with error: %d\n", WSAGetLastError());
-        freeaddrinfo(result);
-        closesocket(ListenSocket);
-        WSACleanup();
-        return 1;
-    }
-
-    freeaddrinfo(result);
-
-    iResult = listen(ListenSocket, SOMAXCONN);
-    if (iResult == SOCKET_ERROR) {
-        printf("listen failed with error: %d\n", WSAGetLastError());
-        closesocket(ListenSocket);
-        WSACleanup();
-        return 1;
-    }
-
-    // Accept a client socket
-    ClientSocket = accept(ListenSocket, NULL, NULL);
-    if (ClientSocket == INVALID_SOCKET) {
-        printf("accept failed with error: %d\n", WSAGetLastError());
-        closesocket(ListenSocket);
-        WSACleanup();
-        return 1;
-    }
-
-    // No longer need server socket
-    closesocket(ListenSocket);
-
-    // Receive until the peer shuts down the connection
-    do {
-
-        iResult = recv(ClientSocket, recvbuf, recvbuflen, 0);
-        if (iResult > 0) {
-            printf("Bytes received: %d\n", iResult);
-
-        // Echo the buffer back to the sender
-            iSendResult = send( ClientSocket, recvbuf, iResult, 0 );
-            if (iSendResult == SOCKET_ERROR) {
-                printf("send failed with error: %d\n", WSAGetLastError());
-                closesocket(ClientSocket);
-                WSACleanup();
-                return 1;
+        isPrime = 1;
+        for (j = 2; j * j <= i; j++) {
+            if (i % j == 0) {
+                isPrime = 0;
+                break;
             }
-            printf("Bytes sent: %d\n", iSendResult);
-        }
-        else if (iResult == 0)
-            printf("Connection closing...\n");
-        else  {
-            printf("recv failed with error: %d\n", WSAGetLastError());
-            closesocket(ClientSocket);
-            WSACleanup();
-            return 1;
         }
 
-    } while (iResult > 0);
+        if (isPrime) {
+            sprintf(result + strlen(result), "%d ", i);
+        }
+    }
 
-    // shutdown the connection since we're done
-    iResult = shutdown(ClientSocket, SD_SEND);
-    if (iResult == SOCKET_ERROR) {
-        printf("shutdown failed with error: %d\n", WSAGetLastError());
-        closesocket(ClientSocket);
+    // Send result to client
+    send(client, result, strlen(result), 0);
+    
+    if (strncmp(buffer, "Shutdown server", 15) == 0) {
+        WaitForSingleObject(hMutex, INFINITE);
+        fprintf(sharedFile, "Shutdown request received from client %lld.\n", client);
+        fflush(sharedFile);
+        ReleaseMutex(hMutex);
+
+        const char* response = "Server shutdown initiated.\n";
+        send(client, response, strlen(response), 0);
+
+        exit(0);
+    } else {
+        const char* response = "Invalid request.\n";
+        send(client, response, strlen(response), 0);
+    }
+
+    closesocket(client);
+    WaitForSingleObject(hMutex, INFINITE);
+    fprintf(sharedFile, "Client %lld disconnected.\n", client);
+    fflush(sharedFile);
+    ReleaseMutex(hMutex);
+}
+
+int main() {
+    WSADATA wsa;
+    SOCKET serverSocket, clientSocket;
+    struct sockaddr_in serverAddr, clientAddr;
+    int addrLen = sizeof(clientAddr);
+    HANDLE thread;
+
+    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
+        printf("WSAStartup failed.\n");
+        return 1;
+    }
+
+    if ((serverSocket = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
+        printf("Failed to create socket.\n");
+        return 1;
+    }
+
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_addr.s_addr = INADDR_ANY;
+    serverAddr.sin_port = htons(PORT);
+
+    if (bind(serverSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
+        printf("Bind failed.\n");
+        closesocket(serverSocket);
+        return 1;
+    }
+
+    if (listen(serverSocket, 5) == SOCKET_ERROR) {
+        printf("Listen failed.\n");
+        closesocket(serverSocket);
+        return 1;
+    }
+
+    sharedFile = fopen("shared_file.txt", "a"); // Append mode to avoid overwriting
+    if (sharedFile == NULL) {
+        printf("Failed to create or open shared file.\n");
+        closesocket(serverSocket);
         WSACleanup();
         return 1;
     }
 
-    // cleanup
-    closesocket(ClientSocket);
+    hMutex = CreateMutex(NULL, FALSE, NULL);
+    if (hMutex == NULL) {
+        printf("Mutex initialization failed.\n");
+        fclose(sharedFile);
+        closesocket(serverSocket);
+        WSACleanup();
+        return 1;
+    }
+
+    printf("Server initialized. Waiting for connections...\n");
+
+    while (1) {
+        if ((clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &addrLen)) == INVALID_SOCKET) {
+            printf("Accept failed.\n");
+            continue;
+        }
+
+        printf("Connection accepted from %s:%d\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+
+        SOCKET* clientSocketPtr = malloc(sizeof(SOCKET));
+        if (clientSocketPtr == NULL) {
+            printf("Memory allocation failed.\n");
+            closesocket(clientSocket);
+            continue;
+        }
+        *clientSocketPtr = clientSocket;
+
+        thread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)handleClient, clientSocketPtr, 0, NULL);
+        if (thread == NULL) {
+            printf("Thread creation failed.\n");
+            free(clientSocketPtr);
+            closesocket(clientSocket);
+            continue;
+        }
+
+        CloseHandle(thread);
+    }
+
+    fclose(sharedFile);
+    CloseHandle(hMutex);
+    closesocket(serverSocket);
     WSACleanup();
 
     return 0;
