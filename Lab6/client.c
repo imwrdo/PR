@@ -1,8 +1,27 @@
 #include <stdio.h>
 #include <winsock2.h>
+#include <stdbool.h>
 
 #define SERVER_IP "127.0.0.1"
 #define PORT 12345
+#define PING_INTERVAL 2000
+
+bool isServerAlive(SOCKET clientSocket) {
+    const char* pingMessage = "Ping";
+    char buffer[1024] = {0};
+
+    // Wysłanie pinga do serwera
+    send(clientSocket, pingMessage, strlen(pingMessage), 0);
+
+    // Odbiór odpowiedzi
+    int bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
+    if (bytesReceived > 0 && strcmp(buffer, "Pong") == 0) {
+        return true; // Serwer odpowiedział na ping
+    }
+
+    return false; // Brak odpowiedzi od serwera
+}
+
 
 int main() {
     WSADATA wsa;
@@ -17,6 +36,11 @@ int main() {
         printf("WSAStartup failed.\n");
         return 1;
     }
+    
+
+    
+
+    
 
     // Create socket
     if ((clientSocket = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
@@ -43,7 +67,7 @@ int main() {
     printf("2. Shutdown server.\n");
     printf("Enter your choice: ");
     scanf("%d", &choice);
-
+    
     if (choice == 1) {
         // Send request for time-consuming calculation
         printf("Enter the range (start end) for prime number calculation: ");
@@ -65,6 +89,10 @@ int main() {
         printf("Server response: %s\n", buffer);
     } else {
         printf("Invalid choice.\n");
+    }
+
+    if (!isServerAlive(clientSocket)) {
+        printf("Server is not responding. Exiting...\n");
     }
 
     closesocket(clientSocket);
