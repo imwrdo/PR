@@ -37,11 +37,6 @@ int main() {
         return 1;
     }
     
-
-    
-
-    
-
     // Create socket
     if ((clientSocket = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
         printf("Failed to create socket.\n");
