@@ -1,72 +1,85 @@
+// server.c
 #include <stdio.h>
 #include <stdlib.h>
 #include <winsock2.h>
 #include <windows.h>
 #include <process.h>
+#include <string.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 #define SERVER_IP "127.0.0.1"
 #define PORT 12345
 #define MAX_CLIENTS 10
+#define RESULT_BUFFER_SIZE 4096
 
 HANDLE hMutex;
 FILE* sharedFile;
+bool shutdownRequested = false;
+SOCKET connectedClients[MAX_CLIENTS]; // Tablica przechowująca sockety klientów
+int numClients = 0; // Liczba aktualnie podłączonych klientów
 
 void handleClient(void* clientSocket) {
     SOCKET client = *((SOCKET*)clientSocket);
     free(clientSocket);
-    WaitForSingleObject(hMutex, INFINITE);
-    fprintf(sharedFile, "Client %lld connected.\n", client);
-    fflush(sharedFile);
-    ReleaseMutex(hMutex);
     char buffer[1024] = {0};
-    recv(client, buffer, sizeof(buffer), 0);
+    int bytesReceived = recv(client, buffer, sizeof(buffer), 0);
 
-    int start, end;
-    sscanf(buffer, "%d %d", &start, &end);
+    if (bytesReceived > 0) {
+        int start, end;
+        sscanf(buffer, "%d %d", &start, &end);
 
-    int i, j, isPrime;
-    char result[1024] = {0};
+        int i, j, isPrime;
+        char result[RESULT_BUFFER_SIZE] = {0};
+        Sleep(200*end);
+        for (i = start; i <= end; i++) {
+            if (i <= 1)
+                continue;
 
-    for (i = start; i <= end; i++) {
-        if (i <= 1)
-            continue;
+            isPrime = 1;
+            for (j = 2; j * j <= i; j++) {
+                if (i % j == 0) {
+                    isPrime = 0;
+                    break;
+                }
+            }
 
-        isPrime = 1;
-        for (j = 2; j * j <= i; j++) {
-            if (i % j == 0) {
-                isPrime = 0;
-                break;
+            if (isPrime) {
+                snprintf(result + strlen(result), RESULT_BUFFER_SIZE - strlen(result), "%d ", i);
             }
         }
 
-        if (isPrime) {
-            sprintf(result + strlen(result), "%d ", i);
+        // Send result to client
+        send(client, result, strlen(result), 0);
+
+        if (strncmp(buffer, "Shutdown server", 15) == 0) {
+            WaitForSingleObject(hMutex, INFINITE);
+            fprintf(sharedFile, "Shutdown request received from client %lld.\n", client);
+            fflush(sharedFile);
+            ReleaseMutex(hMutex);
+
+            shutdownRequested = true; // Ustawienie flagi zamknięcia serwera
+
+            // Zamknij połączenia z innymi klientami
+            for (int i = 0; i < numClients; i++) {
+                if (connectedClients[i] != client) {
+                    const char* shutdownMsg = "Server shutdown initiated. Closing connection.\n";
+                    send(connectedClients[i], shutdownMsg, strlen(shutdownMsg), 0);
+                    closesocket(connectedClients[i]);
+                }
+            }
+
+            closesocket(client);
+            exit(0);
+        } else {
+            const char* response = "Invalid request.\n";
+            send(client, response, strlen(response), 0);
+            closesocket(client);
         }
-    }
-
-    // Send result to client
-    send(client, result, strlen(result), 0);
-    
-    if (strncmp(buffer, "Shutdown server", 15) == 0) {
-        WaitForSingleObject(hMutex, INFINITE);
-        fprintf(sharedFile, "Shutdown request received from client %lld.\n", client);
-        fflush(sharedFile);
-        ReleaseMutex(hMutex);
-
-        const char* response = "Server shutdown initiated.\n";
-        send(client, response, strlen(response), 0);
-
-        exit(0);
     } else {
-        const char* response = "Invalid request.\n";
-        send(client, response, strlen(response), 0);
+        printf("Failed to receive data from client.\n");
+        closesocket(client);
     }
-
-    closesocket(client);
-    WaitForSingleObject(hMutex, INFINITE);
-    fprintf(sharedFile, "Client %lld disconnected.\n", client);
-    fflush(sharedFile);
-    ReleaseMutex(hMutex);
 }
 
 int main() {
@@ -121,13 +134,23 @@ int main() {
 
     printf("Server initialized. Waiting for connections...\n");
 
-    while (1) {
+    while (!shutdownRequested) { // Keep accepting connections until shutdown is requested
         if ((clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &addrLen)) == INVALID_SOCKET) {
             printf("Accept failed.\n");
             continue;
         }
 
         printf("Connection accepted from %s:%d\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+
+        if (numClients < MAX_CLIENTS) {
+            connectedClients[numClients++] = clientSocket; // Dodanie nowego klienta do tablicy
+        } else {
+            printf("Maximum number of clients reached. Cannot accept new connections.\n");
+            const char* maxClientsMsg = "Server is currently full. Please try again later.\n";
+            send(clientSocket, maxClientsMsg, strlen(maxClientsMsg), 0);
+            closesocket(clientSocket);
+            continue;
+        }
 
         SOCKET* clientSocketPtr = malloc(sizeof(SOCKET));
         if (clientSocketPtr == NULL) {
@@ -146,6 +169,11 @@ int main() {
         }
 
         CloseHandle(thread);
+    }
+
+    // Zamknij połączenia z innymi klientami
+    for (int i = 0; i < numClients; i++) {
+        closesocket(connectedClients[i]);
     }
 
     fclose(sharedFile);
