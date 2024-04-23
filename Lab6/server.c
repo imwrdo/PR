@@ -1,4 +1,4 @@
-// server.c
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <winsock2.h>
@@ -16,8 +16,8 @@
 HANDLE hMutex;
 FILE* sharedFile;
 bool shutdownRequested = false;
-SOCKET connectedClients[MAX_CLIENTS]; // Tablica przechowująca sockety klientów
-int numClients = 0; // Liczba aktualnie podłączonych klientów
+SOCKET connectedClients[MAX_CLIENTS]; 
+int numClients = 0; 
 
 void handleClient(void* clientSocket) {
     SOCKET client = *((SOCKET*)clientSocket);
@@ -31,7 +31,7 @@ void handleClient(void* clientSocket) {
 
         int i, j, isPrime;
         char result[RESULT_BUFFER_SIZE] = {0};
-        Sleep(200*end);
+        
         for (i = start; i <= end; i++) {
             if (i <= 1)
                 continue;
@@ -49,7 +49,8 @@ void handleClient(void* clientSocket) {
                 snprintf(result + strlen(result), RESULT_BUFFER_SIZE - strlen(result), "%d ", i);
                 fprintf(sharedFile, "\n%lld: %s",client, result);
                 fflush(sharedFile);
-                ReleaseMutex(hMutex);   
+                ReleaseMutex(hMutex);
+                Sleep(30*end);   
             }
         }
 
@@ -64,7 +65,7 @@ void handleClient(void* clientSocket) {
 
             shutdownRequested = true; // Ustawienie flagi zamknięcia serwera
 
-            // Zamknij połączenia z innymi klientami
+            
             for (int i = 0; i < numClients; i++) {
                 if (connectedClients[i] != client) {
                     const char* shutdownMsg = "Server shutdown initiated. Closing connection.\n";
