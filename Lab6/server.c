@@ -24,7 +24,7 @@ void handleClient(void* clientSocket) {
     free(clientSocket);
     char buffer[1024] = {0};
     int bytesReceived = recv(client, buffer, sizeof(buffer), 0);
-
+    
     if (bytesReceived > 0) {
         int start, end;
         sscanf(buffer, "%d %d", &start, &end);
@@ -45,7 +45,11 @@ void handleClient(void* clientSocket) {
             }
 
             if (isPrime) {
+                WaitForSingleObject(hMutex, INFINITE);
                 snprintf(result + strlen(result), RESULT_BUFFER_SIZE - strlen(result), "%d ", i);
+                fprintf(sharedFile, "\n%lld: %s",client, result);
+                fflush(sharedFile);
+                ReleaseMutex(hMutex);   
             }
         }
 
