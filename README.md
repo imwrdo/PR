@@ -36,7 +36,7 @@ This lab provided practical experience in managing processes and threads within 
   - Description: The given folder contains two independent window programs:for tracking basic messages (Windows message loop);for communication via the Windows clipboard in its own format.
 6. Windows sockets interface
   - Folder: Lab6
-  - Status: In progress
+  - Status: Completed and Published
   - Description:  This lab requires the development of two applications, server, and client with:
      - Support for concurrent handling of multiple clients through synchronous sockets + threads or potentially asynchronous sockets
      - The client triggers time-consuming calculations on the server (minimum 30 sec., like prime number search) or forces server closure based on user choice
