@@ -1,0 +1,14 @@
+Thread 3 started.
+Thread 3 found prime: 5
+Thread 3 finished. Found 1 primes.
+Thread 5 started.
+Thread 5 finished. Found 0 primes.
+Thread 2 started.
+Thread 2 found prime: 3
+Thread 2 finished. Found 1 primes.
+Thread 1 started.
+Thread 1 found prime: 2
+Thread 1 finished. Found 1 primes.
+Thread 4 started.
+Thread 4 found prime: 7
+Thread 4 finished. Found 1 primes.
