@@ -11,6 +11,7 @@ typedef struct {
     int upper_bound;
     int* primes_found;
     int primes_count; // Licznik znalezionych liczb pierwszych
+    int primes_found_count;
     FILE* log_file;
     pthread_mutex_t* mutex;
 } ThreadData;
@@ -35,13 +36,19 @@ void* find_primes(void* arg) {
         if (is_prime(i)) {
             pthread_mutex_lock(data->mutex);
             fprintf(data->log_file, "Thread %d found prime: %d\n", data->thread_id, i);
-            data->primes_found[data->primes_count++] = i; // Zwiększamy licznik znalezionych liczb pierwszych
+            data->primes_found[data->primes_count++] = i;
+            data->primes_found_count++; 
             pthread_mutex_unlock(data->mutex);
         }
     }
 
-    fprintf(data->log_file, "Thread %d finished. Found %d primes.\n", data->thread_id, data->primes_count);
+    
     pthread_exit(NULL);
+}
+
+// Porównywanie dwóch liczb dla sortowania malejącego
+int compare_desc(const void* a, const void* b) {
+    return (*(int*)b - *(int*)a);
 }
 
 int main(int argc, char* argv[]) {
@@ -61,7 +68,6 @@ int main(int argc, char* argv[]) {
 
     pthread_t threads[num_threads];
     ThreadData thread_data[num_threads];
-    int* primes_found[num_threads]; // Tablica dla znalezionych liczb pierwszych w każdym wątku
     pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
     FILE* log_file = fopen("primes_log.txt", "w");
 
@@ -101,27 +107,47 @@ int main(int argc, char* argv[]) {
         thread_data[i].lower_bound = current_lower_bound;
         thread_data[i].upper_bound = current_upper_bound;
         thread_data[i].primes_found = malloc((current_upper_bound - current_lower_bound + 1) * sizeof(int));
-        thread_data[i].primes_count = 0; // Zerujemy licznik znalezionych liczb pierwszych
+        thread_data[i].primes_count = 0;
+        thread_data[i].primes_found_count = 0;
         thread_data[i].log_file = log_file;
         thread_data[i].mutex = &mutex;
-        primes_found[i] = thread_data[i].primes_found; // Przypisanie tablicy dla znalezionych liczb pierwszych do tablicy ogólnego wyniku
 
         pthread_create(&threads[i], NULL, find_primes, (void*)&thread_data[i]);
     }
 
     for (int i = 0; i < num_threads; ++i) {
         pthread_join(threads[i], NULL);
+        
     }
 
     fclose(log_file);
 
-    // Print all found primes in ascending order
+    // Print all found primes in descending order
     printf("All primes found:\n");
+    int total_primes_found = 0;
+    for (int i = 0; i < num_threads; ++i) {
+        total_primes_found += thread_data[i].primes_count;
+    }
+    int* all_primes = malloc(total_primes_found * sizeof(int));
+    int index = 0;
     for (int i = 0; i < num_threads; ++i) {
         for (int j = 0; j < thread_data[i].primes_count; ++j) {
-            printf("%d\n", primes_found[i][j]);
+            all_primes[index++] = thread_data[i].primes_found[j];
         }
         free(thread_data[i].primes_found); // Zwolnienie pamięci zaalokowanej dla tablicy znalezionych liczb pierwszych w danym wątku
+    }
+
+    qsort(all_primes, total_primes_found, sizeof(int), compare_desc);
+
+    for (int i = 0; i < total_primes_found; ++i) {
+        printf("%d\n", all_primes[i]);
+    }
+
+    free(all_primes);
+
+    puts("\nStatystics:");
+    for(int i = 0;i<num_threads;i++){
+        printf("Thread %d found %d primes.\n", i + 1, thread_data[i].primes_found_count);
     }
 
     return 0;
