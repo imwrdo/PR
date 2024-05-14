@@ -11,7 +11,6 @@
 #include <sys/select.h>
 
 #define FIFO_NAME "potok_WEJSCIOWY"
-#define MAX_THREADS 100
 
 typedef struct {
     int min;
@@ -56,9 +55,12 @@ void* find_primes_range(void* arg) {
 }
 
 int main() {
-    mkfifo(FIFO_NAME, 0666);
+    if (mkfifo(FIFO_NAME, 0666) == -1) {
+        perror("mkfifo");
+        exit(EXIT_FAILURE);
+    }
 
-    int fifo = open(FIFO_NAME, O_RDONLY); // Otwarcie potoku do czytania
+    int fifo = open(FIFO_NAME, O_RDONLY | O_NONBLOCK);
     if (fifo == -1) {
         perror("open");
         exit(EXIT_FAILURE);
@@ -69,7 +71,7 @@ int main() {
         FD_ZERO(&readfds);
         FD_SET(fifo, &readfds);
         struct timeval timeout;
-        timeout.tv_sec = 0;
+        timeout.tv_sec = 1;
         timeout.tv_usec = 0;
 
         int ret = select(fifo + 1, &readfds, NULL, NULL, &timeout);
@@ -77,7 +79,7 @@ int main() {
             perror("select");
             exit(EXIT_FAILURE);
         } else if (ret == 0) {
-            // Brak danych do odczytu, kontynuuj pętlę
+            // No data to read, continue loop
             continue;
         }
 
@@ -88,6 +90,13 @@ int main() {
             exit(EXIT_FAILURE);
         }
 
+        if (bytes_read == 0) {
+            // No data was read, continue loop
+            continue;
+        }
+
+        command[bytes_read] = '\0'; // Null-terminate the command string
+
         if (strncmp(command, "koniec", 6) == 0) {
             break;
         }
@@ -97,63 +106,51 @@ int main() {
             int K;
             sscanf(command, "szukaj [%d;%d] %d", &task.min, &task.max, &K);
 
-            // Otwarcie potoku do zapisu
             int fifo_write = open(FIFO_NAME, O_WRONLY);
             if (fifo_write == -1) {
                 perror("open");
                 exit(EXIT_FAILURE);
             }
 
-            // Tworzenie K pod-procesów
+            printf("Creating %d child processes to search for primes in range [%d;%d]\n", K, task.min, task.max);
+
             for (int i = 0; i < K; ++i) {
                 pid_t pid = fork();
                 if (pid == -1) {
                     perror("fork");
                     exit(EXIT_FAILURE);
-                } else if (pid == 0) { // Proces potomny
+                } else if (pid == 0) {
                     Task subtask;
                     subtask.min = task.min + (task.max - task.min + 1) * i / K;
                     subtask.max = task.min + (task.max - task.min + 1) * (i + 1) / K - 1;
 
-                    pthread_t threads[MAX_THREADS];
-                    int thread_count = 0;
+                    ThreadResult* result = find_primes_range(&subtask);
 
-                    // Tworzenie wątków dla pod-zakresu liczb
-                    for (int j = subtask.min; j <= subtask.max; ++j) {
-                        pthread_t thread;
-                        if (pthread_create(&thread, NULL, find_primes_range, &subtask) != 0) {
-                            perror("pthread_create");
-                            exit(EXIT_FAILURE);
-                        }
-                        threads[thread_count++] = thread;
+                    int write_fd = open(FIFO_NAME, O_WRONLY);
+                    if (write_fd == -1) {
+                        perror("open");
+                        exit(EXIT_FAILURE);
                     }
 
-                    // Oczekiwanie na zakończenie wątków
-                    for (int j = 0; j < thread_count; ++j) {
-                        ThreadResult* result;
-                        if (pthread_join(threads[j], (void**)&result) != 0) {
-                            perror("pthread_join");
-                            exit(EXIT_FAILURE);
-                        }
-
-                        // Wysłanie wyników przez potok do procesu nadrzędnego
-                        if (write(fifo_write, result->primes, result->count * sizeof(int)) == -1) {
-                            perror("write");
-                            exit(EXIT_FAILURE);
-                        }
-
-                        free(result->primes);
-                        free(result);
+                    printf("Child %d: Writing primes to FIFO\n", i);
+                    if (write(write_fd, result->primes, result->count * sizeof(int)) == -1) {
+                        perror("write");
+                        exit(EXIT_FAILURE);
                     }
 
-                    close(fifo_write);
+                    free(result->primes);
+                    free(result);
+                    close(write_fd);
                     exit(EXIT_SUCCESS);
                 }
             }
 
+            for (int i = 0; i < K; ++i) {
+                wait(NULL);
+            }
+
             close(fifo_write);
 
-            // Odczytywanie wyników z potoku od pod-procesów
             printf("Liczby pierwsze w zakresie [%d;%d]: ", task.min, task.max);
             bool* primes_present = calloc(task.max - task.min + 1, sizeof(bool));
             if (primes_present == NULL) {
