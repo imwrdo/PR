@@ -33,7 +33,7 @@ This lab provided practical experience in managing processes and threads within 
 5.  Inter-process communication in Windows
   - Folder: Lab5
   - Status: Completed and Published
-  - Description: The given folder contains two independent window programs:for tracking basic messages (Windows message loop);for communication via the Windows clipboard in its own format.
+  - Description: The given folder contains two independent window programs: for tracking basic messages (Windows message loop) and for communication via the Windows clipboard in its own format.
 6. Windows sockets interface
   - Folder: Lab6
   - Status: Completed and Published
@@ -42,18 +42,19 @@ This lab provided practical experience in managing processes and threads within 
      - The client triggers time-consuming calculations on the server (minimum 30 sec., like prime number search) or forces server closure based on user choice
      - The server uses a shared file for all clients, storing partial results during calculations along with client identification, and ensures proper synchronization of access (critical section)
      - Bidirectional communication between client and server is mandatory.
-5. POSIX Threads
+7. POSIX Threads
   - Folder Lab7
   - Status: Completed and Published
   - Description: During the lab, a program was implemented that searches for prime numbers. 
-    When you run the program, you specify parameters:
+    When you run the program, you specify the parameters:
       - number of working threads,
       - lower range of searching prime numbers,
       - upper range of searching prime numbers.
-
   The prime numbers found by the threads are written to a shared file (log: on each line the thread ID and the prime number found by it prime) After all threads have finished working, the main thread displays all the prime numbers found, long with statistics on how many prime numbers each of the working threads found.
+8. UNIX/Linux pipelines
+  - Folder: Lab8
+  - Status: Completed and Published
+  - Description:  Like a Lab7,but with using pipelines
 
-
-Translated with DeepL.com (free version)
 
 
