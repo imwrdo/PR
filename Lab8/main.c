@@ -7,8 +7,7 @@
 #include <sys/wait.h>
 #include <stdbool.h>
 #include <string.h>
-#include <pthread.h>
-#include <sys/select.h>
+#include <errno.h>
 
 #define FIFO_NAME "potok_WEJSCIOWY"
 
@@ -55,7 +54,7 @@ void* find_primes_range(void* arg) {
 }
 
 int main() {
-    if (mkfifo(FIFO_NAME, 0666) == -1) {
+    if (mkfifo(FIFO_NAME, 0666) == -1 && errno != EEXIST) {
         perror("mkfifo");
         exit(EXIT_FAILURE);
     }
@@ -77,6 +76,7 @@ int main() {
         int ret = select(fifo + 1, &readfds, NULL, NULL, &timeout);
         if (ret == -1) {
             perror("select");
+            close(fifo);
             exit(EXIT_FAILURE);
         } else if (ret == 0) {
             // No data to read, continue loop
@@ -84,14 +84,25 @@ int main() {
         }
 
         char command[100];
-        int bytes_read = read(fifo, command, sizeof(command));
+        int bytes_read = read(fifo, command, sizeof(command) - 1); // leave space for null terminator
         if (bytes_read == -1) {
-            perror("read");
-            exit(EXIT_FAILURE);
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                continue; // No data available, continue loop
+            } else {
+                perror("read");
+                close(fifo);
+                exit(EXIT_FAILURE);
+            }
         }
 
         if (bytes_read == 0) {
-            // No data was read, continue loop
+            // FIFO closed, reopen
+            close(fifo);
+            fifo = open(FIFO_NAME, O_RDONLY | O_NONBLOCK);
+            if (fifo == -1) {
+                perror("open");
+                exit(EXIT_FAILURE);
+            }
             continue;
         }
 
@@ -106,10 +117,12 @@ int main() {
             int K;
             sscanf(command, "szukaj [%d;%d] %d", &task.min, &task.max, &K);
 
-            int fifo_write = open(FIFO_NAME, O_WRONLY);
-            if (fifo_write == -1) {
-                perror("open");
-                exit(EXIT_FAILURE);
+            int pipes[K][2];
+            for (int i = 0; i < K; ++i) {
+                if (pipe(pipes[i]) == -1) {
+                    perror("pipe");
+                    exit(EXIT_FAILURE);
+                }
             }
 
             printf("Creating %d child processes to search for primes in range [%d;%d]\n", K, task.min, task.max);
@@ -120,36 +133,31 @@ int main() {
                     perror("fork");
                     exit(EXIT_FAILURE);
                 } else if (pid == 0) {
+                    close(pipes[i][0]);  // Close unused read end
+
                     Task subtask;
                     subtask.min = task.min + (task.max - task.min + 1) * i / K;
                     subtask.max = task.min + (task.max - task.min + 1) * (i + 1) / K - 1;
 
                     ThreadResult* result = find_primes_range(&subtask);
 
-                    int write_fd = open(FIFO_NAME, O_WRONLY);
-                    if (write_fd == -1) {
-                        perror("open");
-                        exit(EXIT_FAILURE);
-                    }
-
-                    printf("Child %d: Writing primes to FIFO\n", i);
-                    if (write(write_fd, result->primes, result->count * sizeof(int)) == -1) {
+                    printf("Child %d: Writing primes to pipe\n", i);
+                    if (write(pipes[i][1], result->primes, result->count * sizeof(int)) == -1) {
                         perror("write");
                         exit(EXIT_FAILURE);
                     }
 
                     free(result->primes);
                     free(result);
-                    close(write_fd);
+                    close(pipes[i][1]);  // Close write end after writing
                     exit(EXIT_SUCCESS);
                 }
+                close(pipes[i][1]);  // Parent closes unused write end
             }
 
             for (int i = 0; i < K; ++i) {
                 wait(NULL);
             }
-
-            close(fifo_write);
 
             printf("Liczby pierwsze w zakresie [%d;%d]: ", task.min, task.max);
             bool* primes_present = calloc(task.max - task.min + 1, sizeof(bool));
@@ -158,12 +166,15 @@ int main() {
                 exit(EXIT_FAILURE);
             }
 
-            int prime;
-            while (read(fifo, &prime, sizeof(int)) > 0) {
-                if (!primes_present[prime - task.min]) {
-                    printf("%d ", prime);
-                    primes_present[prime - task.min] = true;
+            for (int i = 0; i < K; ++i) {
+                int prime;
+                while (read(pipes[i][0], &prime, sizeof(int)) > 0) {
+                    if (!primes_present[prime - task.min]) {
+                        printf("%d ", prime);
+                        primes_present[prime - task.min] = true;
+                    }
                 }
+                close(pipes[i][0]);  // Close read end after reading
             }
             printf("\n");
 
