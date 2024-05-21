@@ -55,6 +55,9 @@ This lab provided practical experience in managing processes and threads within 
   - Folder: Lab8
   - Status: Completed and Published
   - Description:  Like a Lab7,but with using pipelines
-
+9. Threads in Java
+  - Folder: Lab9
+  - Status: Completed and Published
+  - Description:  In this lab, you will explore multithreading concepts in Java. Topics include creating and managing threads, synchronization, thread safety, and concurrent programming paradigms. In my case, I'we done program, that implements producent-consumer iteractions (Task_1) and prime number checker with cacheing.
 
 
