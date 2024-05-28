@@ -8,18 +8,14 @@
 #include <stdbool.h>
 #include <string.h>
 #include <errno.h>
+#include <pthread.h>
 
 #define FIFO_NAME "potok_WEJSCIOWY"
 
 typedef struct {
-    int min;
-    int max;
-} Task;
-
-typedef struct {
-    int* primes;
-    int count;
-} ThreadResult;
+    int number;
+    int write_fd;
+} ThreadData;
 
 int is_prime(int n) {
     if (n <= 1) return 0;
@@ -29,28 +25,20 @@ int is_prime(int n) {
     return 1;
 }
 
-void* find_primes_range(void* arg) {
-    Task* task = (Task*) arg;
+void* check_prime(void* arg) {
+    ThreadData* data = (ThreadData*) arg;
+    int number = data->number;
+    int write_fd = data->write_fd;
 
-    ThreadResult* result = malloc(sizeof(ThreadResult));
-    if (result == NULL) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-    }
-    result->primes = malloc((task->max - task->min + 1) * sizeof(int));
-    if (result->primes == NULL) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-    }
-    result->count = 0;
-
-    for (int i = task->min; i <= task->max; ++i) {
-        if (is_prime(i)) {
-            result->primes[result->count++] = i;
+    if (is_prime(number)) {
+        if (write(write_fd, &number, sizeof(int)) == -1) {
+            perror("write");
+            exit(EXIT_FAILURE);
         }
     }
 
-    return result;
+    free(data);
+    return NULL;
 }
 
 int main() {
@@ -113,9 +101,8 @@ int main() {
         }
 
         if (strncmp(command, "szukaj", 6) == 0) {
-            Task task;
-            int K;
-            sscanf(command, "szukaj [%d;%d] %d", &task.min, &task.max, &K);
+            int min, max, K;
+            sscanf(command, "szukaj [%d;%d] %d", &min, &max, &K);
 
             int pipes[K][2];
             for (int i = 0; i < K; ++i) {
@@ -125,42 +112,58 @@ int main() {
                 }
             }
 
-            printf("Creating %d child processes to search for primes in range [%d;%d]\n", K, task.min, task.max);
+            printf("Creating %d child processes to search for primes in range [%d;%d]\n", K, min, max);
 
             for (int i = 0; i < K; ++i) {
                 pid_t pid = fork();
                 if (pid == -1) {
                     perror("fork");
                     exit(EXIT_FAILURE);
-                } else if (pid == 0) {
-                    close(pipes[i][0]);  // Close unused read end
+                } else if (pid == 0) { // Child process
+                    close(pipes[i][0]); // Close unused read end
 
-                    Task subtask;
-                    subtask.min = task.min + (task.max - task.min + 1) * i / K;
-                    subtask.max = task.min + (task.max - task.min + 1) * (i + 1) / K - 1;
+                    int start = min + (max - min + 1) * i / K;
+                    int end = min + (max - min + 1) * (i + 1) / K - 1;
 
-                    ThreadResult* result = find_primes_range(&subtask);
-
-                    printf("Child %d: Writing primes to pipe\n", i);
-                    if (write(pipes[i][1], result->primes, result->count * sizeof(int)) == -1) {
-                        perror("write");
+                    pthread_t* threads = malloc((end - start + 1) * sizeof(pthread_t));
+                    if (threads == NULL) {
+                        perror("malloc");
                         exit(EXIT_FAILURE);
                     }
 
-                    free(result->primes);
-                    free(result);
-                    close(pipes[i][1]);  // Close write end after writing
+                    for (int j = start; j <= end; ++j) {
+                        ThreadData* data = malloc(sizeof(ThreadData));
+                        if (data == NULL) {
+                            perror("malloc");
+                            exit(EXIT_FAILURE);
+                        }
+                        data->number = j;
+                        data->write_fd = pipes[i][1];
+
+                        if (pthread_create(&threads[j - start], NULL, check_prime, data) != 0) {
+                            perror("pthread_create");
+                            exit(EXIT_FAILURE);
+                        }
+                    }
+
+                    for (int j = start; j <= end; ++j) {
+                        pthread_join(threads[j - start], NULL);
+                    }
+
+                    free(threads);
+                    close(pipes[i][1]); // Close write end
                     exit(EXIT_SUCCESS);
+                } else { // Parent process
+                    close(pipes[i][1]); // Close unused write end
                 }
-                close(pipes[i][1]);  // Parent closes unused write end
             }
 
             for (int i = 0; i < K; ++i) {
-                wait(NULL);
+                wait(NULL); // Wait for all child processes to finish
             }
 
-            printf("Liczby pierwsze w zakresie [%d;%d]: ", task.min, task.max);
-            bool* primes_present = calloc(task.max - task.min + 1, sizeof(bool));
+            printf("Liczby pierwsze w zakresie [%d;%d]: ", min, max);
+            bool* primes_present = calloc(max - min + 1, sizeof(bool));
             if (primes_present == NULL) {
                 perror("calloc");
                 exit(EXIT_FAILURE);
@@ -169,12 +172,12 @@ int main() {
             for (int i = 0; i < K; ++i) {
                 int prime;
                 while (read(pipes[i][0], &prime, sizeof(int)) > 0) {
-                    if (!primes_present[prime - task.min]) {
+                    if (!primes_present[prime - min]) {
                         printf("%d ", prime);
-                        primes_present[prime - task.min] = true;
+                        primes_present[prime - min] = true;
                     }
                 }
-                close(pipes[i][0]);  // Close read end after reading
+                close(pipes[i][0]); // Close read end
             }
             printf("\n");
 
