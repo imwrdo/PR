@@ -52,11 +52,21 @@ class Warehouse {
 
     public synchronized boolean removeProduct(String type, int quantity) {
         Integer currentQuantity = stock.get(type);
-        if (currentQuantity != null && currentQuantity >= quantity) {
-            stock.put(type, currentQuantity - quantity);
-            currentStock -= quantity;
-            System.out.println("Removed: " + quantity + " of " + type);
-            return true;
+        if (currentQuantity != null ) {
+            if(currentQuantity <= quantity){
+                System.out.println("We have only "+currentQuantity+" of "+ type);
+                stock.put(type, 0);
+                currentStock -= currentQuantity;
+                System.out.println("Removed: " + currentQuantity + " of " + type);
+                return true;
+            }
+            else{
+                stock.put(type, currentQuantity - quantity);
+                currentStock -= quantity;
+                System.out.println("Removed: " + quantity + " of " + type);
+                return true;
+            }
+
         }
         return false;
     }
@@ -120,6 +130,7 @@ class Consumer implements Runnable {
                 Thread.currentThread().interrupt();
             }
         }
+
     }
 }
 
