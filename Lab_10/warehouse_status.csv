@@ -1,0 +1,64 @@
+Warehouse A: {}
+Warehouse B: {}
+Warehouse A: {A=10}
+Warehouse B: {B=4}
+Warehouse A: {A=7}
+Warehouse B: {B=25}
+Warehouse A: {A=6}
+Warehouse B: {B=23}
+Warehouse A: {A=6}
+Warehouse B: {B=16}
+Warehouse A: {A=3}
+Warehouse B: {B=0}
+Warehouse A: {A=4}
+Warehouse B: {B=1}
+Warehouse A: {}
+Warehouse B: {}
+Warehouse A: {}
+Warehouse B: {}
+Warehouse A: {Type 2=1, Type 4=7, Type 0=20}
+Warehouse B: {Type 2=11, Type 4=12, Type 0=0, Type 1=5}
+Warehouse A: {Type 2=2, Type 3=13, Type 4=6, Type 0=32, Type 1=5}
+Warehouse B: {Type 2=30, Type 3=7, Type 4=21, Type 0=3, Type 1=5}
+Warehouse A: {Type 2=8, Type 3=10, Type 4=11, Type 0=39, Type 1=20}
+Warehouse B: {Type 2=30, Type 3=12, Type 4=25, Type 0=3, Type 1=6}
+Warehouse A: {Type 2=8, Type 3=12, Type 4=11, Type 0=38, Type 1=31}
+Warehouse B: {Type 2=24, Type 3=12, Type 4=28, Type 0=2, Type 1=20}
+Warehouse A: {Type 2=1, Type 3=12, Type 4=7, Type 0=30, Type 1=46}
+Warehouse B: {Type 2=24, Type 3=13, Type 4=34, Type 0=2, Type 1=26}
+Warehouse A: {Type 2=5, Type 3=4, Type 4=14, Type 0=31, Type 1=43}
+Warehouse B: {Type 2=24, Type 3=3, Type 4=40, Type 0=0, Type 1=24}
+Warehouse A: {Type 2=5, Type 3=4, Type 4=14, Type 0=31, Type 1=43}
+Warehouse B: {Type 2=18, Type 3=19, Type 4=37, Type 0=2, Type 1=21}
+Warehouse A: {Type 2=5, Type 3=4, Type 4=14, Type 0=31, Type 1=43}
+Warehouse B: {Type 2=18, Type 3=22, Type 4=28, Type 0=14, Type 1=10}
+Warehouse A: {Type 2=5, Type 3=4, Type 4=14, Type 0=31, Type 1=43}
+Warehouse B: {Type 2=29, Type 3=18, Type 4=38, Type 0=3, Type 1=10}
+Warehouse A: {Type 2=5, Type 3=4, Type 4=14, Type 0=31, Type 1=43}
+Warehouse B: {Type 2=33, Type 3=25, Type 4=38, Type 0=3, Type 1=0}
+Warehouse A: {}
+Warehouse B: {}
+Warehouse A: {Type 4=2, Type 0=13, Type 1=9}
+Warehouse B: {Type 2=12, Type 3=3, Type 0=6}
+Warehouse A: {Type 2=1, Type 3=15, Type 4=2, Type 0=25, Type 1=5}
+Warehouse B: {Type 2=18, Type 3=3, Type 4=18, Type 0=6, Type 1=17}
+Warehouse A: {Type 2=9, Type 3=12, Type 4=4, Type 0=33, Type 1=24}
+Warehouse B: {Type 2=23, Type 3=3, Type 4=20, Type 0=12, Type 1=25}
+Warehouse A: {Type 2=9, Type 3=12, Type 4=4, Type 0=40, Type 1=33}
+Warehouse B: {Type 2=21, Type 3=2, Type 4=30, Type 0=24, Type 1=22}
+Warehouse A: {}
+Warehouse B: {}
+Warehouse A: {Type 2=4, Type 4=4, Type 0=4, Type 1=4}
+Warehouse B: {Type 3=12, Type 0=4, Type 1=9}
+Warehouse A: {Type 2=6, Type 4=6, Type 0=7, Type 1=9}
+Warehouse B: {Type 2=8, Type 3=16, Type 4=1, Type 0=7, Type 1=17}
+Warehouse A: {Type 2=6, Type 3=1, Type 4=16, Type 0=15, Type 1=21}
+Warehouse B: {Type 2=16, Type 3=25, Type 4=1, Type 0=0, Type 1=38}
+Warehouse A: {Type 2=6, Type 3=5, Type 4=27, Type 0=17, Type 1=10}
+Warehouse B: {Type 2=19, Type 3=35, Type 4=1, Type 0=0, Type 1=43}
+Warehouse A: {Type 2=6, Type 3=10, Type 4=32, Type 0=18, Type 1=2}
+Warehouse B: {Type 2=19, Type 3=35, Type 4=1, Type 0=0, Type 1=43}
+Warehouse A: {Type 2=10, Type 3=10, Type 4=25, Type 0=18, Type 1=7}
+Warehouse B: {Type 2=19, Type 3=35, Type 4=1, Type 0=0, Type 1=43}
+Warehouse A: {Type 2=9, Type 3=16, Type 4=17, Type 0=14, Type 1=20}
+Warehouse B: {Type 2=19, Type 3=35, Type 4=1, Type 0=0, Type 1=43}
